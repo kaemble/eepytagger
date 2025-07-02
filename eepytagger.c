@@ -88,15 +88,17 @@ int load_from_file(const char *filename, TagEntry *entries) {
 }
 
 void print_help() {
-	printf("\n--- eepytagger v1.0 ---\n");
+	printf("\n--- eepytagger v1.01 ---\n");
 	printf("Commands:\n");
 	printf("  !start [HH:MM:SS]                Start a tagging session, optionally setting an initial timestamp offset.\n");
 	printf("  !end                             End the tagging session and save to the output file.\n");
 	printf("  !offset <n>/all +/-<seconds>     Adjust the timestamp of tag(s) <n>/all by +/- seconds.\n");
 	printf("  !previous +/-<seconds>           Adjust the timestamp of the last tag by +/- seconds.\n");
 	printf("  !prev +/-<seconds>               Same as !previous.\n");
-	printf("  !edit <n> <new text>             Change the text of tag <n>, if <n> is not provided it edits the last tag\n");
-	printf("                                   instead. '$' represents the previous version of the tag (can be escaped).\n");
+	printf("  !edit <n> <new text>             Change the text of tag <n>, if <n> is not provided it edits the last tag,\n");
+	printf("                                   '$' represents the previous version of the tag (can be escaped).\n");
+	printf("  !pause                           Pauses the timer.\n");
+	printf("  !resume                          Resumes the timer.\n");
 	printf("  !delete <n>                      Delete tag <n>.\n");
 	printf("  !help                            Show this help message.\n");
 	printf("  <any text>                       Add a new tag with the current timestamp and the input text.\n");
@@ -106,7 +108,7 @@ void print_help() {
 	printf("  --resume <file>                  Resume tagging from an existing file.\n");
 	printf("\nUse up/down arrow keys to cycle through command history.\n");
 	printf("Maximum %d tags allowed.\n", MAX_ENTRIES);
-	printf("-------------------------\n\n");
+	printf("------------------------\n\n");
 }
 
 char *trim_whitespace(char *str) {
@@ -124,6 +126,10 @@ int main(int argc, char *argv[]) {
 	int resume_mode = 0;
 	int started = 0;
 	time_t start_time = 0;
+	int paused = 0;
+	time_t pause_time = 0;
+	int paused_duration = 0;
+
 
 	// Parse arguments
 	for (int i = 1; i < argc; i++) {
@@ -220,6 +226,42 @@ int main(int argc, char *argv[]) {
 			printf("Started tagging from %02d:%02d:%02d\n", initial_seconds / 3600, (initial_seconds % 3600) / 60, initial_seconds % 60);
 			continue;
 		}
+
+		if (strcmp(trimmed_input, "!pause") == 0) {
+			if (!started) {
+				printf("Session not started yet.\n");
+				continue;
+			}
+			if (paused) {
+				printf("Already paused.\n");
+				continue;
+			}
+			pause_time = time(NULL);
+			paused = 1;
+			int elapsed = (int)(pause_time - start_time - paused_duration);
+			if (elapsed < 0) elapsed = 0;
+			printf("Paused at %02d:%02d:%02d\n", elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60);
+			continue;
+		}
+
+		if (strcmp(trimmed_input, "!resume") == 0) {
+			if (!started) {
+				printf("Session not started yet.\n");
+				continue;
+			}
+			if (!paused) {
+				printf("Not currently paused.\n");
+				continue;
+			}
+			time_t now = time(NULL);
+			paused_duration += (int)(now - pause_time);
+			paused = 0;
+			int elapsed = (int)(now - start_time - paused_duration);
+			if (elapsed < 0) elapsed = 0;
+			printf("Resumed at %02d:%02d:%02d\n", elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60);
+			continue;
+		}
+
 		if (!started) {
 			printf("Use !start [HH:MM:SS] before tagging.\n");
 			continue;
@@ -243,11 +285,13 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				for (int i = 0; i < entry_count; i++) {
-					if (entries[i].seconds + delta < 0) {
-						printf("Adjustment would result in negative timestamp for tag %d. Skipping.\n", i + 1);
-						continue;
+					int new_time = entries[i].seconds + delta;
+					if (new_time < 0) {
+						entries[i].seconds = 0;
+						printf("Tag %d clamped to 00:00:00 (was negative after offset).\n", i + 1);
+					} else {
+						entries[i].seconds = new_time;
 					}
-					entries[i].seconds += delta;
 				}
 				printf("Adjusted all tags by %+d seconds.\n", delta);
 			} else {
@@ -342,7 +386,13 @@ int main(int argc, char *argv[]) {
 
 		// Add new tag
 		time_t now = time(NULL);
-		int elapsed = (int)difftime(now, start_time);
+		int effective_paused_duration = paused_duration;
+		if (paused) {
+			effective_paused_duration += (int)(now - pause_time);
+			printf("Warning: tagging while paused.\n");
+		}
+
+		int elapsed = (int)(now - start_time - effective_paused_duration);
 		if (elapsed < 0) elapsed = 0;
 
 		if (entry_count >= MAX_ENTRIES) {

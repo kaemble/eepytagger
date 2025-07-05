@@ -88,7 +88,7 @@ int load_from_file(const char *filename, TagEntry *entries) {
 }
 
 void print_help() {
-	printf("\n--- eepytagger v1.01 ---\n");
+	printf("\n--- eepytagger v1.02 ---\n");
 	printf("Commands:\n");
 	printf("  !start [HH:MM:SS]                Start a tagging session, optionally setting an initial timestamp offset.\n");
 	printf("  !end                             End the tagging session and save to the output file.\n");
@@ -316,15 +316,13 @@ int main(int argc, char *argv[]) {
 		if (strncmp(trimmed_input, "!edit", 5) == 0) {
 			int edit_index = entry_count - 1;
 			char *rest = trimmed_input + 5;
-			if (sscanf(trimmed_input + 5, "%d", &edit_index) == 1) {
-				rest = strchr(trimmed_input + 5, ' ');
-				if (!rest) {
-					printf("Usage: !edit [n] new text\n");
-					continue;
-				}
-				edit_index--;
-			}
 			rest = trim_whitespace(rest);
+			if (isdigit((unsigned char)*rest)) {
+				char *after_index = rest;
+				edit_index = strtol(after_index, &after_index, 10) - 1;
+				rest = trim_whitespace(after_index);
+			}
+
 			if (*rest == '\0') {
 				printf("Usage: !edit [n] new text\n");
 				continue;

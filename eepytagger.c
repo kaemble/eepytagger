@@ -306,7 +306,9 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				entries[index].seconds += delta;
-				printf("Adjusted tag %d by %+d seconds.\n", index + 1, delta);
+				char ts_buf[16];
+				format_time(entries[index].seconds, ts_buf, sizeof(ts_buf));
+				printf("Adjusted tag %d to %s\n", index + 1, ts_buf);
 			}
 			save_to_file(temp_filename, entries, entry_count, 1);
 			continue;

@@ -88,14 +88,14 @@ int load_from_file(const char *filename, TagEntry *entries) {
 }
 
 void print_help() {
-	printf("\n--- eepytagger v1.02 ---\n");
+	printf("\n--- eepytagger v1.04 ---\n");
 	printf("Commands:\n");
 	printf("  !start [HH:MM:SS]                Start a tagging session, optionally setting an initial timestamp offset.\n");
 	printf("  !end                             End the tagging session and save to the output file.\n");
 	printf("  !offset <n>/all +/-<seconds>     Adjust the timestamp of tag(s) <n>/all by +/- seconds.\n");
 	printf("  !previous +/-<seconds>           Adjust the timestamp of the last tag by +/- seconds.\n");
-	printf("  !prev +/-<seconds>               Same as !previous.\n");
-	printf("  !edit <n> <new text>             Change the text of tag <n>, if <n> is not provided it edits the last tag,\n");
+	printf("  !p +/-<seconds>                  Same as !previous.\n");
+	printf("  !e <n> <new text>                Change the text of tag <n>, if <n> is not provided it edits the last tag,\n");
 	printf("                                   '$' represents the previous version of the tag (can be escaped).\n");
 	printf("  !pause                           Pauses the timer.\n");
 	printf("  !resume                          Resumes the timer.\n");
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
 		char offset_type[16] = {0};
 
 		if ((sscanf(trimmed_input, "!offset %d %c%d", &n, &sign, &adj) == 3 ||
-			sscanf(trimmed_input, "!prev %c%d", &sign, &adj) == 2 ||
+			sscanf(trimmed_input, "!p %c%d", &sign, &adj) == 2 ||
 			sscanf(trimmed_input, "!previous %c%d", &sign, &adj) == 2 ||
 			sscanf(trimmed_input, "!offset %15s %c%d", offset_type, &sign, &adj) == 3)) {
 			int delta = (sign == '-') ? -adj : adj;
@@ -315,9 +315,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		// Handle !edit
-		if (strncmp(trimmed_input, "!edit", 5) == 0) {
+		if (strncmp(trimmed_input, "!e", 2) == 0) {
 			int edit_index = entry_count - 1;
-			char *rest = trimmed_input + 5;
+			char *rest = trimmed_input + 2;
 			rest = trim_whitespace(rest);
 			if (isdigit((unsigned char)*rest)) {
 				char *after_index = rest;
@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (*rest == '\0') {
-				printf("Usage: !edit [n] new text\n");
+				printf("Usage: !e [n] new text\n");
 				continue;
 			}
 			if (edit_index < 0 || edit_index >= entry_count) {

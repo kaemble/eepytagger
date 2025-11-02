@@ -12,8 +12,8 @@ Commands:
   !end                             End the tagging session and save to the output file.
   !offset <n>/all +/-<seconds>     Adjust the timestamp of tag(s) <n>/all by +/- seconds.
   !previous +/-<seconds>           Adjust the timestamp of the last tag by +/- seconds.
-  !prev +/-<seconds>               Same as !previous.
-  !edit <n> <new text>             Change the text of tag <n>, if <n> is not provided it edits the last tag,
+  !p +/-<seconds>                  Same as !previous.
+  !e <n> <new text>                Change the text of tag <n>, if <n> is not provided it edits the last tag,
                                    '$' represents the previous version of the tag (can be escaped).
   !pause                           Pauses the timer.
   !resume                          Resumes the timer.

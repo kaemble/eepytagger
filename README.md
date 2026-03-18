@@ -8,25 +8,26 @@ Requires readline to be installed.
 ## Usage
 ```
 Commands:
-  !start [HH:MM:SS]                Start a tagging session, optionally setting an initial timestamp offset.
-  !end                             End the tagging session and save to the output file.
-  !offset <n>/all +/-<seconds>     Adjust the timestamp of tag(s) <n>/all by +/- seconds.
-  !previous +/-<seconds>           Adjust the timestamp of the last tag by +/- seconds.
-  !p +/-<seconds>                  Same as !previous.
-  !e <n> <new text>                Change the text of tag <n>, if <n> is not provided it edits the last tag,
-                                   '$' represents the previous version of the tag (can be escaped).
-  !pause                           Pauses the timer.
-  !resume                          Resumes the timer.
-  !delete <n>                      Delete tag <n>.
-  !help                            Show this help message.
-  <any text>                       Add a new tag with the current timestamp and the input text.
+  !start [HH:MM:SS]            Start a tagging session, optionally setting an initial timestamp offset.
+  !end                         End the tagging session and save to the output file.
+  !offset <n> +/-<seconds>     Adjust the timestamp of tag <n> by +/- seconds.
+  !all +/-<seconds>            Adjust the timestamp all tags by +/- seconds.
+  !range <X>-<Y> +/-<seconds>  Adjust the timestamp of tags in range X-Y by +/- seconds.
+  !p +/-<seconds>              Adjust the timestamp of the previous tag by +/- seconds.
+  !e <n> <new text>            Change the text of tag <n>, if <n> is not provided it edits the previous
+                               tag, '$' is replaced by the previous version of the tag (can be escaped).
+  !pause                       Pauses the timer.
+  !resume                      Resumes the timer.
+  !delete <n>                  Delete tag <n>.
+  !help                        Show this help message.
+  <any text>                   Add a new tag with the current timestamp and the input text.
 
 Command-line arguments:
-  -f <output_file>                 Specify output file (default: timestamps.txt).
-  -t <temp_file>                   Specify temporary file (default: /tmp/timestamps.txt).
-  --resume <file>                  Resume tagging from an existing file.
+  -f <output_file>             Specify output file (default: timestamps.txt).
+  -t <temp_file>               Specify temporary file (default: /tmp/timestamps.txt).
+  --resume <file>              Resume tagging from an existing file.
 
 Use up/down arrow keys to cycle through command history.
-Maximum 1000 tags allowed.
+Maximum 1024 tags allowed.
 ```
 You can check your current tags by reading the temporary file.

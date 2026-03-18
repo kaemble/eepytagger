@@ -9,7 +9,7 @@
 #include <limits.h>
 
 #define MAX_LINE 1024
-#define MAX_ENTRIES 1000
+#define MAX_ENTRIES 1024
 #define MAX_FILENAME 256
 #define DEFAULT_TEMP_FILE "/tmp/timestamps.txt"
 #define DEFAULT_OUTPUT_FILE "timestamps.txt"
@@ -88,24 +88,25 @@ int load_from_file(const char *filename, TagEntry *entries) {
 }
 
 void print_help() {
-	printf("\n--- eepytagger v1.04 ---\n");
+	printf("\n--- eepytagger v1.05 ---\n");
 	printf("Commands:\n");
-	printf("  !start [HH:MM:SS]                Start a tagging session, optionally setting an initial timestamp offset.\n");
-	printf("  !end                             End the tagging session and save to the output file.\n");
-	printf("  !offset <n>/all +/-<seconds>     Adjust the timestamp of tag(s) <n>/all by +/- seconds.\n");
-	printf("  !previous +/-<seconds>           Adjust the timestamp of the last tag by +/- seconds.\n");
-	printf("  !p +/-<seconds>                  Same as !previous.\n");
-	printf("  !e <n> <new text>                Change the text of tag <n>, if <n> is not provided it edits the last tag,\n");
-	printf("                                   '$' represents the previous version of the tag (can be escaped).\n");
-	printf("  !pause                           Pauses the timer.\n");
-	printf("  !resume                          Resumes the timer.\n");
-	printf("  !delete <n>                      Delete tag <n>.\n");
-	printf("  !help                            Show this help message.\n");
-	printf("  <any text>                       Add a new tag with the current timestamp and the input text.\n");
+	printf("  !start [HH:MM:SS]            Start a tagging session, optionally setting an initial timestamp offset.\n");
+	printf("  !end                         End the tagging session and save to the output file.\n");
+	printf("  !offset <n> +/-<seconds>     Adjust the timestamp of tag <n> by +/- seconds.\n");
+	printf("  !all +/-<seconds>            Adjust the timestamp all tags by +/- seconds.\n");
+	printf("  !range <X>-<Y> +/-<seconds>  Adjust the timestamp of tags in range X-Y by +/- seconds.\n");
+	printf("  !p +/-<seconds>              Adjust the timestamp of the previous tag by +/- seconds.\n");
+	printf("  !e <n> <new text>            Change the text of tag <n>, if <n> is not provided it edits the previous\n");
+	printf("                               tag, '$' is replaced by the previous version of the tag (can be escaped).\n");
+	printf("  !pause                       Pauses the timer.\n");
+	printf("  !resume                      Resumes the timer.\n");
+	printf("  !delete <n>                  Delete tag <n>.\n");
+	printf("  !help                        Show this help message.\n");
+	printf("  <any text>                   Add a new tag with the current timestamp and the input text.\n");
 	printf("\nCommand-line arguments:\n");
-	printf("  -f <output_file>                 Specify output file (default: %s).\n", DEFAULT_OUTPUT_FILE);
-	printf("  -t <temp_file>                   Specify temporary file (default: %s).\n", DEFAULT_TEMP_FILE);
-	printf("  --resume <file>                  Resume tagging from an existing file.\n");
+	printf("  -f <output_file>             Specify output file (default: %s).\n", DEFAULT_OUTPUT_FILE);
+	printf("  -t <temp_file>               Specify temporary file (default: %s).\n", DEFAULT_TEMP_FILE);
+	printf("  --resume <file>              Resume tagging from an existing file.\n");
 	printf("\nUse up/down arrow keys to cycle through command history.\n");
 	printf("Maximum %d tags allowed.\n", MAX_ENTRIES);
 	printf("------------------------\n\n");
@@ -123,7 +124,6 @@ int main(int argc, char *argv[]) {
 	char temp_filename[MAX_FILENAME] = DEFAULT_TEMP_FILE;
 	TagEntry entries[MAX_ENTRIES] = {0}; // Initialize array
 	int entry_count = 0;
-	int resume_mode = 0;
 	int started = 0;
 	time_t start_time = 0;
 	int paused = 0;
@@ -155,7 +155,6 @@ int main(int argc, char *argv[]) {
 			strncpy(output_filename, argv[++i], MAX_FILENAME - 1);
 			output_filename[MAX_FILENAME - 1] = '\0';
 			entry_count = load_from_file(output_filename, entries);
-			resume_mode = 1;
 		} else {
 			print_help();
 			return 1;
@@ -268,48 +267,83 @@ int main(int argc, char *argv[]) {
 		}
 
 		// Handle offset commands
-		int n, adj;
+		int n, start, end, adj;
 		char sign;
-		char offset_type[16] = {0};
 
-		if ((sscanf(trimmed_input, "!offset %d %c%d", &n, &sign, &adj) == 3 ||
-			sscanf(trimmed_input, "!p %c%d", &sign, &adj) == 2 ||
-			sscanf(trimmed_input, "!previous %c%d", &sign, &adj) == 2 ||
-			sscanf(trimmed_input, "!offset %15s %c%d", offset_type, &sign, &adj) == 3)) {
+		if (sscanf(trimmed_input, "!p %c%d", &sign, &adj) == 2) {
 			int delta = (sign == '-') ? -adj : adj;
-
-			if (strncmp(trimmed_input, "!offset", 7) == 0 && strcmp(offset_type, "all") == 0) {
-				// Adjust all tags
-				if (entry_count == 0) {
-					printf("No tags to adjust.\n");
-					continue;
-				}
-				for (int i = 0; i < entry_count; i++) {
-					int new_time = entries[i].seconds + delta;
-					if (new_time < 0) {
-						entries[i].seconds = 0;
-						printf("Tag %d clamped to 00:00:00 (was negative after offset).\n", i + 1);
-					} else {
-						entries[i].seconds = new_time;
-					}
-				}
-				printf("Adjusted all tags by %+d seconds.\n", delta);
-			} else {
-				// Adjust specific tag or last tag
-				int index = (strncmp(trimmed_input, "!offset", 7) == 0 && offset_type[0] == '\0') ? n - 1 : entry_count - 1;
-				if (index < 0 || index >= entry_count) {
-					printf("Invalid tag index.\n");
-					continue;
-				}
-				if (entries[index].seconds + delta < 0) {
-					printf("Adjustment would result in negative timestamp.\n");
-					continue;
-				}
-				entries[index].seconds += delta;
-				char ts_buf[16];
-				format_time(entries[index].seconds, ts_buf, sizeof(ts_buf));
-				printf("Adjusted tag %d to %s\n", index + 1, ts_buf);
+			int index = entry_count - 1;
+			if (index < 0 || index >= entry_count) {
+				printf("Invalid tag index.\n");
+				continue;
 			}
+			if (entries[index].seconds + delta < 0) {
+				printf("Adjustment would result in negative timestamp.\n");
+				continue;
+			}
+			entries[index].seconds += delta;
+			char ts_buf[16];
+			format_time(entries[index].seconds, ts_buf, sizeof(ts_buf));
+			printf("Adjusted tag %d to %s\n", index + 1, ts_buf);
+			save_to_file(temp_filename, entries, entry_count, 1);
+			continue;
+		}
+
+		if (sscanf(trimmed_input, "!offset %d %c%d", &n, &sign, &adj) == 3) {
+			int delta = (sign == '-') ? -adj : adj;
+			int index = n - 1;
+			if (index < 0 || index >= entry_count) {
+				printf("Invalid tag index.\n");
+				continue;
+			}
+			if (entries[index].seconds + delta < 0) {
+				printf("Adjustment would result in negative timestamp.\n");
+				continue;
+			}
+			entries[index].seconds += delta;
+			char ts_buf[16];
+			format_time(entries[index].seconds, ts_buf, sizeof(ts_buf));
+			printf("Adjusted tag %d to %s\n", index + 1, ts_buf);
+			save_to_file(temp_filename, entries, entry_count, 1);
+			continue;
+		}
+
+		if (sscanf(trimmed_input, "!all %c%d", &sign, &adj) == 2) {
+			int delta = (sign == '-') ? -adj : adj;
+			if (entry_count == 0) {
+				printf("No tags to adjust.\n");
+				continue;
+			}
+			for (int i = 0; i < entry_count; i++) {
+				int new_time = entries[i].seconds + delta;
+				if (new_time < 0) {
+					entries[i].seconds = 0;
+					printf("Tag %d clamped to 00:00:00 (was negative after offset).\n", i + 1);
+				} else {
+					entries[i].seconds = new_time;
+				}
+			}
+			printf("Adjusted all tags by %+d seconds.\n", delta);
+			save_to_file(temp_filename, entries, entry_count, 1);
+			continue;
+		}
+
+		if (sscanf(trimmed_input, "!range %d-%d %c%d", &start, &end, &sign, &adj) == 4) {
+			int delta = (sign == '-') ? -adj : adj;
+			if (start < 1 || end < start || end > entry_count) {
+				printf("Invalid tag range.\n");
+				continue;
+			}
+			for (int i = start - 1; i <= end - 1; i++) {
+				int new_time = entries[i].seconds + delta;
+				if (new_time < 0) {
+					entries[i].seconds = 0;
+					printf("Tag %d clamped to 00:00:00 (was negative after offset).\n", i + 1);
+				} else {
+					entries[i].seconds = new_time;
+				}
+			}
+			printf("Adjusted tags %d-%d by %+d seconds.\n", start, end, delta);
 			save_to_file(temp_filename, entries, entry_count, 1);
 			continue;
 		}

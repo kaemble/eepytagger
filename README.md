@@ -19,6 +19,7 @@ Commands:
   !pause                       Pauses the timer.
   !resume                      Resumes the timer.
   !delete <n>                  Delete tag <n>.
+  !sort                        Sort all tags by timestamp.
   !help                        Show this help message.
   <any text>                   Add a new tag with the current timestamp and the input text.
 

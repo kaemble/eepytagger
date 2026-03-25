@@ -88,19 +88,20 @@ int load_from_file(const char *filename, TagEntry *entries) {
 }
 
 void print_help() {
-	printf("\n--- eepytagger v1.05 ---\n");
+	printf("\n--- eepytagger v1.06 ---\n");
 	printf("Commands:\n");
 	printf("  !start [HH:MM:SS]            Start a tagging session, optionally setting an initial timestamp offset.\n");
 	printf("  !end                         End the tagging session and save to the output file.\n");
 	printf("  !offset <n> +/-<seconds>     Adjust the timestamp of tag <n> by +/- seconds.\n");
 	printf("  !all +/-<seconds>            Adjust the timestamp all tags by +/- seconds.\n");
 	printf("  !range <X>-<Y> +/-<seconds>  Adjust the timestamp of tags in range X-Y by +/- seconds.\n");
-	printf("  !p +/-<seconds>              Adjust the timestamp of the previous tag by +/- seconds.\n");
-	printf("  !e <n> <new text>            Change the text of tag <n>, if <n> is not provided it edits the previous\n");
+	printf("  !p +/-<seconds>              Adjust the timestamp of the latest tag by +/- seconds.\n");
+	printf("  !e <n> <new text>            Change the text of tag <n>, if <n> is not provided it edits the latest\n");
 	printf("                               tag, '$' is replaced by the previous version of the tag (can be escaped).\n");
 	printf("  !pause                       Pauses the timer.\n");
 	printf("  !resume                      Resumes the timer.\n");
 	printf("  !delete <n>                  Delete tag <n>.\n");
+	printf("  !sort                        Sort all tags by timestamp.\n");
 	printf("  !help                        Show this help message.\n");
 	printf("  <any text>                   Add a new tag with the current timestamp and the input text.\n");
 	printf("\nCommand-line arguments:\n");
@@ -117,6 +118,13 @@ char *trim_whitespace(char *str) {
 	char *end = str + strlen(str) - 1;
 	while (end > str && isspace((unsigned char)*end)) *end-- = '\0';
 	return str;
+}
+
+
+int compare_entries(const void *a, const void *b) {
+	TagEntry *entryA = (TagEntry *)a;
+	TagEntry *entryB = (TagEntry *)b;
+	return entryA->seconds - entryB->seconds;
 }
 
 int main(int argc, char *argv[]) {
@@ -260,6 +268,18 @@ int main(int argc, char *argv[]) {
 			printf("Resumed at %02d:%02d:%02d\n", elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60);
 			continue;
 		}
+ 
+ 		if (strcmp(trimmed_input, "!sort") == 0) {
+ 			if (entry_count > 0) {
+ 				qsort(entries, entry_count, sizeof(TagEntry), compare_entries);
+ 				save_to_file(temp_filename, entries, entry_count, 1);
+ 				printf("Sorted tags by timestamp.\n");
+ 			} else {
+ 				printf("No tags to sort.\n");
+ 				continue;
+ 			}
+ 			continue;
+ 		}
 
 		if (!started) {
 			printf("Use !start [HH:MM:SS] before tagging.\n");
